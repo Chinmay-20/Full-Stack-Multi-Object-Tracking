@@ -105,9 +105,9 @@ The system employs a multi-metric tracking approach:
 
 ## Example Results
 
-(output_demo.mp4)
+[output_demo.mp4]
 
-(output_video.mp4)
+[output_video.mp4]
 
 ## Performance Metrics
 
