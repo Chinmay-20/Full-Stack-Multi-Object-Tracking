@@ -105,17 +105,9 @@ The system employs a multi-metric tracking approach:
 
 ## Example Results
 
-<div align="center">
-  <video width="100%" controls>
-    <source src="output_demo.mp4" type="video/mp4">
-  </video>
-</div>
+[Watch Output Demo](output_demo.mp4)
 
-<div align="center">
-  <video width="100%" controls>
-    <source src="output_video.mp4" type="video/mp4">
-  </video>
-</div>
+[Watch Output Video](output_video.mp4)
 
 ## Performance Metrics
 
