@@ -1,0 +1,15 @@
+# Ignore files
+*.o
+*.exe
+*.png
+mongodb_cluter.txt
+*.zip
+*.mp4
+*.rtf
+
+# Ignore logs and temporary files
+logs/
+*.log
+temp/
+dataset/
+uploads/
