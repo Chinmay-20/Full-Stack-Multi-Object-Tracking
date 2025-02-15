@@ -105,10 +105,17 @@ The system employs a multi-metric tracking approach:
 
 ## Example Results
 
-[![Output Demo]](https://drive.google.com/file/d/1t9OSo7mUgsTnON171FS2BHuxfqUAXYcL/view?usp=sharing)
+<div align="center">
+  <video width="100%" controls>
+    <source src="output_demo.mp4" type="video/mp4">
+  </video>
+</div>
 
-[![Output Demo]](https://drive.google.com/file/d/1kPkdMOagVvGA27svMTo2m8L8Kkx0aG62/view?usp=sharing)
-
+<div align="center">
+  <video width="100%" controls>
+    <source src="output_video.mp4" type="video/mp4">
+  </video>
+</div>
 
 ## Performance Metrics
 

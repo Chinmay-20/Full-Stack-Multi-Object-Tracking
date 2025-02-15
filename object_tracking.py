@@ -27,8 +27,8 @@ from tqdm import tqdm
 import argparse
 import os
 
-global stored_obstacles
-global idx
+# global stored_obstacles
+# global idx
 
 class Obstacle():
     def __init__(self, idx, box, features=None,  age=1, unmatched_age=0):
@@ -42,13 +42,17 @@ class Obstacle():
         self.unmatched_age = unmatched_age
 
 class Yolo_implmentation:
-    def __init__(self):
+    def __init__(self, idx=0):
 
 
         self.model = yolov5.load('models/yolov5s.pt')
 
         self.model.conf = 0.5
         self.model.iou = 0.4
+
+        self.stored_obstacles = []
+        self.idx = idx
+
 
         self.classesFile = "models/coco.names"
         with open(self.classesFile,'rt') as f:
@@ -318,9 +322,10 @@ class Yolo_implmentation:
         exponential_cost = self.yu(old_box, new_box)
         feature_cost = self.cosine_similarity(old_features, new_features)[0][0]
 
+        print(iou_cost)
+        
         if (iou_cost >= iou_thresh and linear_cost >= linear_thresh and exponential_cost>=exp_thresh and feature_cost >= feat_thresh):
             return iou_cost
-
         else:
             return 0
 
@@ -384,8 +389,8 @@ class Yolo_implmentation:
 
     # imitates main function running for single image at a time. 
     def process_single_image(self, input_image):
-        global stored_obstacles
-        global idx
+        # global stored_obstacles
+        # global idx
         # 1 — Run Obstacle Detection & Convert the Boxes
         final_image = copy.deepcopy(input_image)
         h, w, _ = final_image.shape
@@ -398,30 +403,30 @@ class Yolo_implmentation:
         # Define the list we'll return:
         new_obstacles = []
 
-        old_obstacles = [obs.box for obs in stored_obstacles] # Simply get the boxes
-        old_features = [obs.features for obs in stored_obstacles]
+        old_obstacles = [obs.box for obs in self.stored_obstacles] # Simply get the boxes
+        old_features = [obs.features for obs in self.stored_obstacles]
         
         matches, unmatched_detections, unmatched_tracks = self.associate(old_obstacles, out_boxes, old_features, features)
 
         # Matching
         for match in matches:
-            obs = Obstacle(stored_obstacles[match[0]].idx, out_boxes[match[1]], features[match[1]], stored_obstacles[match[0]].age +1)
+            obs = Obstacle(self.stored_obstacles[match[0]].idx, out_boxes[match[1]], features[match[1]], self.stored_obstacles[match[0]].age +1)
             new_obstacles.append(obs)
             # print("Obstacle ", obs.idx, " with box: ", obs.box, "has been matched with obstacle ", stored_obstacles[match[0]].box, "and now has age: ", obs.age)
         
         # New (Unmatched) Detections
         for d in unmatched_detections:
-            obs = Obstacle(idx, out_boxes[d], features[d])
+            obs = Obstacle(self.idx, out_boxes[d], features[d])
             new_obstacles.append(obs)
-            idx+=1
+            self.idx+=1
             # print("Obstacle ", obs.idx, " has been detected for the first time: ", obs.box)
 
         # Unmatched Tracks
         for t in unmatched_tracks:
-            i = old_obstacles.index(stored_obstacles[t].box)
+            i = old_obstacles.index(self.stored_obstacles[t].box)
             # print("Old Obstacles tracked: ", stored_obstacles[i].box)
             if i is not None:
-                obs = stored_obstacles[i]
+                obs = self.stored_obstacles[i]
                 obs.unmatched_age +=1
                 new_obstacles.append(obs)
                 # print("Obstacle ", obs.idx, "is a long term obstacle unmatched ", obs.unmatched_age, "times.")
@@ -436,9 +441,9 @@ class Yolo_implmentation:
                 cv2.rectangle(final_image, (left, top), (right, bottom), self.generate_random_color(obs.idx*10), thickness=7)
                 final_image = cv2.putText(final_image, str(obs.idx),(left - 10,top - 10),cv2.FONT_HERSHEY_SIMPLEX, 1, self.generate_random_color(obs.idx*10),thickness=4)
 
-        stored_obstacles = new_obstacles
+        self.stored_obstacles = new_obstacles
 
-        return final_image, stored_obstacles
+        return final_image, self.stored_obstacles
 
     def validate_video_format(self, file_path):
         """Validate if the video file has an acceptable format."""
@@ -471,10 +476,10 @@ def main():
         output_path = 'output_video.mp4'
 
         # Initialize global variables
-        global stored_obstacles
-        global idx
-        stored_obstacles = []
-        idx = 0
+        # global stored_obstacles
+        # global idx
+        yolo_obj.stored_obstacles = []
+        yolo_obj.idx = 0
 
         
 

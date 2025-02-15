@@ -2,10 +2,12 @@
 *.o
 *.exe
 *.png
-mongodb_cluter.txt
+mongodb_cluster.txt
 *.zip
 *.mp4
 *.rtf
+.DS_Store
+*.avi
 
 # Ignore logs and temporary files
 logs/
@@ -13,3 +15,4 @@ logs/
 temp/
 dataset/
 uploads/
+__pycache__/
