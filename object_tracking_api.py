@@ -1,4 +1,5 @@
-from fastapi import FastAPI, File, UploadFile
+from fastapi import FastAPI, File, UploadFile, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import shutil
 import os
@@ -22,6 +23,14 @@ collection = db["tracking_results"]
 
 # fastAPI connections
 app = FastAPI()
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allow requests from any frontend
+    allow_credentials=True,
+    allow_methods=["*"],  # Allow all HTTP methods (GET, POST, etc.)
+    allow_headers=["*"],  # Allow all headers
+)
 
 # Initialize YOLO tracking model
 yolo_tracker = Yolo_implmentation()
@@ -55,7 +64,7 @@ def get_results(file_id: str):
     result = collection.find_one({"file_id": file_id}, {"_id":0}) # Exclude mongodb's _id field 
 
     if not result:
-        return {"Error": "File ID not found"}
+        raise HTTPException(status_code=404,  detail = "File ID not found")
     
     # Extract tracking statistics
     num_frames = len(result["results"])
@@ -64,12 +73,22 @@ def get_results(file_id: str):
 
     return {
         "file_id": file_id,
+        "file_name": result["file_name"],
         "total_frames_processed": num_frames,
         "total_objects_detected": total_objects,
         "average_objects_per_frame": round(avg_objects_per_frame, 2)
     }
 
+@app.get("/files")
+def get_all_files():
+    """Return a list of all stored file names and their corresponding file IDs."""
+    files = collection.find({}, {"_id": 0, "file_id": 1, "file_name": 1})  # Get only file_id and file_name
+    file_list = list(files)
+    
+    if not file_list:
+        return {"message": "No files found in the database."}
 
+    return {"files": file_list}
 
 
 def process_file(file_path, file_id, file_name):
@@ -100,16 +119,6 @@ def process_file(file_path, file_id, file_name):
     
     return results
 
-@app.get("/files")
-def get_all_files():
-    """Return a list of all stored file names and their corresponding file IDs."""
-    files = collection.find({}, {"_id": 0, "file_id": 1, "file_name": 1})  # Get only file_id and file_name
-    file_list = list(files)
-    
-    if not file_list:
-        return {"message": "No files found in the database."}
-
-    return {"files": file_list}
 
 
 def format_results(frame_results):
