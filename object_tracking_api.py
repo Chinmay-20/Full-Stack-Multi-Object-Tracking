@@ -12,9 +12,34 @@ sys.path.append("/Users/chinmay/Documents/multi_object_tracking")
 from object_tracking import Yolo_implmentation 
 from time import time
 from pymongo import MongoClient
+import os 
+import boto3
+from dotenv import load_dotenv
+import uuid
+import mimetypes
+import io
+import tempfile
+from tqdm import tqdm
+
+load_dotenv()
 
 # mongodb cloud connection
 MONGO_URI = "mongodb://localhost:27017"
+
+# AWS S3 Configuration
+S3_BUCKET = os.getenv("AWS_S3_BUCKET_NAME")
+S3_REGION = os.getenv("AWS_S3_REGION")
+AWS_ACCESS_KEY = os.getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_KEY = os.getenv("AWS_SECRET_ACCESS_KEY")
+
+s3_client = boto3.client(
+    "s3",
+    aws_access_key_id=AWS_ACCESS_KEY,
+    aws_secret_access_key=AWS_SECRET_KEY,
+    region_name=S3_REGION
+)
+res = s3_client.list_buckets()
+print("Buckets available:", [bucket["Name"] for bucket in res["Buckets"]])
 
 
 client = MongoClient(MONGO_URI)
@@ -40,10 +65,76 @@ tracking_results = {}
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+
+def upload_to_s3(file_path):
+    """Upload processed media (image/video) to S3 from file path and return its URL."""
+    file_name = os.path.basename(file_path)
+    content_type = "video/mp4"
+    
+    with open(file_path, "rb") as file_data:
+        s3_client.put_object(
+            Bucket=S3_BUCKET,
+            Key=file_name,
+            Body=file_data,
+            ContentType=content_type
+        )
+    
+    return f"https://{S3_BUCKET}.s3.{S3_REGION}.amazonaws.com/{file_name}"
+
+def process_file(file_path, file_id, file_name):
+    """Process the uploaded image/video and return tracking results using object tracking."""
+    results = []
+
+    if file_path.endswith((".mp4", ".avi")):
+        cap = cv2.VideoCapture(file_path)
+        if not cap.isOpened():
+            raise RuntimeError(f"Could not open video file '{file_path}'. The file might be corrupted.")
+        
+
+        frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+        frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+        fps = int(cap.get(cv2.CAP_PROP_FPS))
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
+        
+        output_path = os.path.join(UPLOAD_DIR, f"{file_id}_processed.mp4")
+        fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+        out = cv2.VideoWriter(output_path, fourcc, fps, (frame_width, frame_height))
+        
+        with tqdm(total=total_frames, desc="Processing frames") as pbar:
+            while cap.isOpened():
+                ret, frame = cap.read()
+                if not ret:
+                    break
+                
+                frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                processed_frame, frame_results = yolo_tracker.process_single_image(frame_rgb)
+                results.append(format_results(frame_results))
+                
+                processed_frame_bgr = cv2.cvtColor(processed_frame, cv2.COLOR_RGB2BGR)
+                out.write(processed_frame_bgr)
+                
+                pbar.update(1)
+        
+        cap.release()
+        out.release()
+        cv2.destroyAllWindows()
+
+    s3_url = upload_to_s3(output_path)
+
+    collection.insert_one({
+        "file_id": file_id,
+        "file_name": file_name,
+        "s3_url": s3_url,
+        "results": results
+    })
+    
+    return s3_url
+
+
 @app.post("/upload")
 async def upload_file(file: UploadFile = File(...)):
     file_extension = file.filename.split(".")[-1]
-    if file_extension not in ["jpg", "jpeg", "png", "mp4", "avi"]:
+    if file_extension not in [ "mp4", "avi"]:
         return {"error": "Unsupported file format"}
     
     # Save the file
@@ -55,9 +146,11 @@ async def upload_file(file: UploadFile = File(...)):
     
     # Process file using object tracking
     result = process_file(file_path, file_id, file_name)
-    # tracking_results[file_id] = result
     
-    return {"file_id": file_id, "message": "File uploaded and processed successfully"}
+    return {"file_id": file_id, "s3_url": result, "message": "File uploaded and processed successfully"}
+
+    
+
 
 @app.get("/results/{file_id}")
 def get_results(file_id: str):
@@ -91,33 +184,42 @@ def get_all_files():
     return {"files": file_list}
 
 
-def process_file(file_path, file_id, file_name):
-    """Process the uploaded image/video and return tracking results using object tracking."""
-    results = []
-    
-    if file_path.endswith((".jpg", ".jpeg", ".png")):
-        img = cv2.imread(file_path)
-        _, frame_results = yolo_tracker.process_single_image(img)
-        results.append(format_results(frame_results))
+@app.get("/get-video/{file_id}")
+def get_video(file_id: str):
+    """Retrieve the S3 URL of a processed video using file_id."""
+    file_entry = collection.find_one({"file_id": file_id})
+    if not file_entry:
+        raise HTTPException(status_code=404, detail="File not found")
+    return {"s3_url": file_entry["s3_url"]}
 
-    elif file_path.endswith((".mp4", ".avi")):
-        cap = cv2.VideoCapture(file_path)
-        while cap.isOpened():
-            ret, frame = cap.read()
-            if not ret:
-                break
-            frame, frame_results = yolo_tracker.process_single_image(frame)
-            results.append(format_results(frame_results))
-        
-        cap.release()
+@app.delete("/delete/{file_id}")
+async def delete_file(file_id: str):
+    """Delete a file entry from the database based on file_id."""
+    # result = collection.delete_one({"file_id": file_id})
 
-    collection.insert_one({
-        "file_id": file_id,
-        "file_name": file_name,
-        "results": results
-    })
+    # if result.deleted_count == 0:
+    #     raise HTTPException(status_code=404, detail="File ID not found")
+
+    # return {"message": "File successfully deleted"}
+    file_entry = collection.find_one({"file_id": file_id})
     
-    return results
+    if not file_entry:
+        raise HTTPException(status_code=404, detail="File ID not found")
+    
+    s3_url = file_entry.get("s3_url")
+    if s3_url:
+        s3_object_key = s3_url.split("/")[-1]  # Extract object key from S3 URL
+        try:
+            s3_client.delete_object(Bucket=S3_BUCKET, Key=s3_object_key)
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to delete from S3: {str(e)}")
+    
+    result = collection.delete_one({"file_id": file_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="File ID not found")
+    
+    return {"message": "File successfully deleted from MongoDB and S3"}
+
 
 
 
@@ -143,6 +245,8 @@ def format_obstacle(obstacle):
     }
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
 """
 curl -X 'POST' \
   'http://localhost:8000/upload' \
@@ -155,15 +259,3 @@ curl -X 'GET' \
 
 
 """
-
-# @app.get("/results/{file_id}")
-# def get_results(file_id: str):
-#     if file_id in tracking_results:
-#         return tracking_results[file_id]
-#     return {"error": "File ID not found"}
-
-# @app.get("/results/{file_id}")
-# def get_results(file_id: str):
-#     if file_id in tracking_results:
-#         return json.dumps(tracking_results[file_id])  # Ensure JSON format
-#     return {"error": "File ID not found"}

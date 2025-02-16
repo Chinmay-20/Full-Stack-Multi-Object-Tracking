@@ -8,6 +8,7 @@ mongodb_cluster.txt
 *.rtf
 .DS_Store
 *.avi
+.env
 
 # Ignore logs and temporary files
 logs/
