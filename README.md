@@ -1,23 +1,46 @@
-# Multi-Object Detection and Tracking System
+# Multi-Object Tracking Full-Stack System
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
 [![YOLOv5](https://img.shields.io/badge/YOLOv5-v6.0-darkgreen.svg)](https://github.com/ultralytics/yolov5)
 [![OpenCV](https://img.shields.io/badge/OpenCV-4.5+-red.svg)](https://opencv.org/)
 [![PyTorch](https://img.shields.io/badge/PyTorch-1.9+-ee4c2c.svg)](https://pytorch.org/)
 
-A robust computer vision system that performs real-time object detection and tracking using YOLOv5 and custom tracking algorithms. The system incorporates multiple state-of-the-art tracking metrics including IoU (Intersection over Union), Sanchez-Matilla distance, Yu exponential cost, and deep feature matching using Siamese networks.
+## Overview
+
+This is a **full-stack** multi-object tracking system built with **React (frontend) and Flask (backend)**, utilizing **YOLOv5** for object detection and a combination of multiple tracking metrics including the **Hungarian algorithm** for optimal association. The processed videos and related information are stored in **Amazon S3**, while **MongoDB** is used as the primary database to store metadata about the uploaded files.
 
 ## Key Features
 
-- Real-time object detection using YOLOv5
-- Multi-metric tracking system combining:
-  - Spatial correlation (IoU)
-  - Distance-based metrics (Sanchez-Matilla)
-  - Shape-aware exponential cost function (Yu)
+- **Real-time object detection** using YOLOv5
+- **Multi-metric tracking system** combining:
+  - IoU (Intersection over Union)
+  - Sanchez-Matilla distance
+  - Yu exponential cost function
   - Deep feature matching using Siamese networks
-- Hungarian algorithm for optimal detection-track association
-- Robust track management with age-based filtering
-- Support for multiple video formats (MP4, AVI, MOV)
+- **Hungarian algorithm** for optimal detection-track association
+- **Track management** with age-based filtering
+- **Full-stack integration** with React frontend, Flask backend, MongoDB database, and AWS S3 for file storage
+- **Unique file ID generation** upon upload, which allows retrieval of tracking statistics and processed videos
+
+## System Architecture
+
+### **Frontend (React + TypeScript)**
+- Built with **Vite + TypeScript** for fast and modular development
+- Provides a **user-friendly UI** to:
+  - Upload files
+  - Retrieve tracking statistics
+  - View processed videos stored in **Amazon S3**
+
+### **Backend (Flask + Python)**
+- Handles **file uploads and processing**
+- Stores **file metadata in MongoDB**
+- Generates and returns a **unique file ID** for each uploaded file
+- Provides APIs to **fetch tracking results** and **serve processed videos from S3**
+
+### **Storage (AWS S3 + MongoDB)**
+- **Amazon S3** stores processed video files
+- **MongoDB** stores metadata including file ID, file name, and S3 links
 
 ## Project Structure
 
@@ -25,103 +48,94 @@ A robust computer vision system that performs real-time object detection and tra
 ├── dataset/
 │   ├── images/
 │   ├── nvidia_ai_challenge_images/
-│   └── survillance_videos/
+│   └── surveillance_videos/
 ├── models/
 │   ├── coco.names
 │   ├── model640.pt
 │   └── yolov5s.pt
 ├── object_tracking.py
+├── object_tracking_api.py
 ├── siamese_net.py
 ├── requirements.txt
+├── object-tracking-frontend/
+│   ├── src/
+│   │   ├── components/
+│   │   ├── pages/
+│   │   ├── assets/
+│   │   ├── App.tsx
+│   │   ├── Navbar.tsx
+│   │   ├── UploadComponent.tsx
+│   │   ├── FetchResults.tsx
+│   │   ├── ViewVideo.tsx
+│   ├── package.json
+│   ├── vite.config.ts
+│   ├── tsconfig.json
+│   └── README.md
 └── README.md
 ```
 
 ## Installation
 
 1. Clone the repository:
-```bash
-git clone https://github.com/yourusername/object-tracking.git
-cd object-tracking
-```
+   ```bash
+   git clone https://github.com/yourusername/object-tracking.git
+   cd object-tracking
+   ```
 
-2. Create and activate a virtual environment (recommended):
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
+2. Setup the **backend**:
+   ```bash
+   python -m venv venv
+   source venv/bin/activate  # On Windows: venv\Scripts\activate
+   pip install -r requirements.txt
+   ```
 
-3. Install dependencies:
-```bash
-pip install -r requirements.txt
-```
+3. Setup the **frontend**:
+   ```bash
+   cd object-tracking-frontend
+   npm install
+   npm run dev
+   ```
 
 ## Usage
 
-Run the tracking system on a video file:
+### Uploading a File
+- Navigate to the **Upload File** page.
+- Upload a video file.
+- A **unique file ID** will be generated and stored in the database.
 
-```bash
-python object_tracking.py path/to/your/video.mp4
-```
+### Querying a File ID
+- The **Home page** displays all stored file IDs.
+- The user can copy a file ID and use it to fetch **tracking statistics**.
 
-The processed video will be saved as `output_video.mp4` in the project directory.
+### Viewing Processed Video
+- The **processed video** is stored in **S3**, and the link is retrieved from **MongoDB**.
+- Enter a **File ID** in the **View Processed Video** page to watch the processed result.
 
-## System Architecture
+## Screenshots
 
-### Detection
-- Utilizes YOLOv5 for robust object detection
-- Configurable confidence threshold (default: 0.5)
-- IoU threshold for non-max suppression (default: 0.4)
+### Uploading a File
+![Upload File](SCREENSHOTS/op3_scenario_1.png)
 
-### Feature Extraction
-- Deep feature extraction using a Siamese network
-- Gaussian attention mechanism for focused feature learning
-- Feature dimensionality: 1024
+### Querying Tracking Statistics
+![Query Statistics](SCREENSHOTS/op3_scenario_2.png)
 
-### Tracking
-The system employs a multi-metric tracking approach:
+### Viewing Processed Video
+![View Processed Video](SCREENSHOTS/op4_scenario_1.png)
 
-1. **IoU Matching**
-   - Primary spatial correlation metric
-   - Threshold: 0.3
+### Home Page with Stored Files
+![Home Page](SCREENSHOTS/op4_scenario_2.png)
 
-2. **Sanchez-Matilla Distance**
-   - Combines distance and shape metrics
-   - Normalized by frame dimensions
-   - Threshold: 10000
+### Copy File ID Feature
+![Copy File ID](SCREENSHOTS/op5_scenario_2.png)
 
-3. **Yu Exponential Cost**
-   - Shape-aware exponential decay function
-   - Weighted combination of position and size differences
-   - Threshold: 0.5
-
-4. **Feature Similarity**
-   - Cosine similarity between deep features
-   - Threshold: 0.2
-
-### Track Management
-- Minimum hit streak: 1 frame
-- Maximum unmatched age: 1 frame
-- Track pruning based on age and matching history
-
-## Example Results
-
-<div align="center">
-  <video width="100%" controls>
-    <source src="output_demo.mp4" type="video/mp4">
-  </video>
-</div>
-
-<div align="center">
-  <video width="100%" controls>
-    <source src="output_video.mp4" type="video/mp4">
-  </video>
-</div>
+### Processed Video Example
+![Processed Video](SCREENSHOTS/op6_scenario_2.png)
 
 ## Performance Metrics
 
-- Average processing speed: ~20-30 FPS (depends on hardware)
-- Detection accuracy: >90% mAP@0.5 (YOLOv5s)
-- Tracking robustness: Handles occlusions and object interactions effectively
+- **Processing Speed:** ~20-30 FPS (hardware-dependent)
+- **Detection Accuracy:** >90% mAP@0.5 (YOLOv5s)
+- **Tracking Robustness:** Effectively handles occlusions and object interactions
 
 ## Technical Considerations
 
@@ -132,7 +146,7 @@ The system employs a multi-metric tracking approach:
 
 ### Optimization
 - Vectorized operations for cost matrix computation
-- Efficient Hungarian algorithm implementation
+- Hungarian algorithm for efficient tracking
 - Parallel processing of detection and feature extraction
 
 ## Contributing
@@ -143,11 +157,3 @@ The system employs a multi-metric tracking approach:
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-
-<p align="center">
-  Made with ❤️ by Your Name
-</p>
