@@ -131,6 +131,12 @@ This is a **full-stack** multi-object tracking system built with **React (fronte
 ### Processed Video Example
 ![Processed Video](SCREENSHOTS/op6_scenario_2.png)
 
+### AWS S3 Bucket
+![Processed Video](SCREENSHOTS/op7_scenario_2.png)
+
+### Local MongoDB
+![Processed Video](SCREENSHOTS/op8_scenario_2.png)
+
 ## Performance Metrics
 
 - **Processing Speed:** ~20-30 FPS (hardware-dependent)
