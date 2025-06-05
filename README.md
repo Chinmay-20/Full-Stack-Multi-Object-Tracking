@@ -163,3 +163,7 @@ This is a **full-stack** multi-object tracking system built with **React (fronte
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+
+Question in interview.
+1. How will you handle failure? OR What will be the system behavior if backend goes down or ML part of script is down ?
+Ans: Currently system architecture is tightly coupled. Video uploaded -> sent to backend -> sent to ML part -> results recived -> pushed to MongoDB & S3. Anything of this goes down, complete application is down. So it is tightly coupled. To make it robust, Use AWS SQS and lambda. between All stages of application so if any of part goes down, application is not down and data is not lost.
